@@ -14,11 +14,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Streamlit Cloud Secrets → 环境变量（云端部署必需）
 try:
-    for key in ["GEMINI_API_KEY"]:
-        if key not in os.environ and key in st.secrets:
-            os.environ[key] = st.secrets[key]
-except Exception:
-    pass
+    _gemini_key = st.secrets["GEMINI_API_KEY"]
+    os.environ["GEMINI_API_KEY"] = _gemini_key
+except (KeyError, FileNotFoundError, Exception):
+    _gemini_key = os.getenv("GEMINI_API_KEY", "")
 
 st.set_page_config(
     page_title="涉诈网站智能研判系统",
@@ -70,6 +69,12 @@ with st.sidebar:
     for label, demo_url in demo_urls.items():
         if st.button(label, use_container_width=True):
             st.session_state["target_url"] = demo_url
+    st.markdown("---")
+    _key_status = os.getenv("GEMINI_API_KEY", "")
+    if _key_status:
+        st.success(f"✦ Gemini AI 已连接 (key: ...{_key_status[-6:]})")
+    else:
+        st.warning("✦ Gemini AI 未连接")
 
 col_input, col_btn = st.columns([4, 1])
 with col_input:
