@@ -42,14 +42,18 @@ def _get_deepseek():
     return OpenAI(api_key=_deepseek_key(), base_url=DEEPSEEK_BASE_URL)
 
 
-# ── 统一文本生成（Gemini 优先，DeepSeek 备选）─────────────────
-def _call_llm(prompt: str, max_tokens: int = 1024, temperature: float = 0.1) -> tuple:
+# ── 统一文本生成（支持用户选择引擎）──────────────────────────
+def _call_llm(prompt: str, max_tokens: int = 1024, temperature: float = 0.1,
+              engine: str = "auto") -> tuple:
     """
     返回 (response_text, provider_name)
-    优先 Gemini，失败则 DeepSeek
+    engine: "auto" = Gemini优先DeepSeek备选, "gemini" = 仅Gemini, "deepseek" = 仅DeepSeek
     """
+    try_gemini = engine in ("auto", "gemini")
+    try_deepseek = engine in ("auto", "deepseek")
+
     # 尝试 Gemini
-    if GEMINI_AVAILABLE and _gemini_key():
+    if try_gemini and GEMINI_AVAILABLE and _gemini_key():
         try:
             client = _get_gemini()
             resp = client.models.generate_content(
@@ -64,10 +68,12 @@ def _call_llm(prompt: str, max_tokens: int = 1024, temperature: float = 0.1) -> 
             if text:
                 return text.strip(), f"Gemini ({GEMINI_MODEL})"
         except Exception as e:
+            if engine == "gemini":
+                raise RuntimeError(f"Gemini 调用失败: {e}")
             logger.warning(f"[AI] Gemini 调用失败，切换 DeepSeek: {e}")
 
-    # 备选 DeepSeek
-    if DEEPSEEK_AVAILABLE and _deepseek_key():
+    # DeepSeek
+    if try_deepseek and DEEPSEEK_AVAILABLE and _deepseek_key():
         try:
             client = _get_deepseek()
             resp = client.chat.completions.create(
@@ -80,9 +86,9 @@ def _call_llm(prompt: str, max_tokens: int = 1024, temperature: float = 0.1) -> 
             if text:
                 return text.strip(), f"DeepSeek ({DEEPSEEK_MODEL})"
         except Exception as e:
-            logger.error(f"[AI] DeepSeek 调用也失败: {e}")
+            logger.error(f"[AI] DeepSeek 调用失败: {e}")
 
-    raise RuntimeError("Gemini 和 DeepSeek 均不可用")
+    raise RuntimeError(f"所选 AI 引擎不可用 (engine={engine})")
 
 
 def _parse_json(raw: str) -> dict:
@@ -116,7 +122,7 @@ class GeminiContentAnalyzer:
 - 0.8~1.0: 几乎确定是欺诈网站"""
 
     @classmethod
-    def analyze(cls, page_text: str, page_title: str = "") -> Dict:
+    def analyze(cls, page_text: str, page_title: str = "", engine: str = "auto") -> Dict:
         if not page_text:
             return {"risk_score": 0.0, "fraud_types": [], "key_evidence": [],
                     "reasoning": "未采集到页面文本，跳过内容分析", "_provider": ""}
@@ -127,7 +133,8 @@ class GeminiContentAnalyzer:
 
         try:
             raw, provider = _call_llm(
-                f"{cls.SYSTEM_PROMPT}\n\n请分析以下网站文本：\n\n{text_input}"
+                f"{cls.SYSTEM_PROMPT}\n\n请分析以下网站文本：\n\n{text_input}",
+                engine=engine,
             )
             result = _parse_json(raw)
             result["risk_score"] = max(0.0, min(1.0, float(result.get("risk_score", 0.0))))
@@ -163,9 +170,14 @@ class GeminiVisionAnalyzer:
 }"""
 
     @classmethod
-    def analyze(cls, screenshot_b64: str) -> Dict:
+    def analyze(cls, screenshot_b64: str, engine: str = "auto") -> Dict:
         default = {"visual_risk_score": 0.0, "is_phishing": False, "impersonates": None,
                     "visual_features": [], "description": "AI 视觉分析未执行"}
+
+        # 视觉分析仅 Gemini 支持；用户选择仅 DeepSeek 时跳过
+        if engine == "deepseek":
+            default["description"] = "DeepSeek 不支持视觉分析，已跳过"
+            return default
 
         if not screenshot_b64 or not GEMINI_AVAILABLE or not _gemini_key():
             return default
@@ -226,7 +238,7 @@ class GeminiReportGenerator:
 针对当前风险等级给出具体的下一步行动建议"""
 
     @classmethod
-    def generate(cls, context: Dict) -> tuple:
+    def generate(cls, context: Dict, engine: str = "auto") -> tuple:
         """返回 (report_text, provider_name)"""
         intel_summary = f"""
 【目标网址】{context.get('url', '未知')}
@@ -262,7 +274,7 @@ class GeminiReportGenerator:
         try:
             report_text, provider = _call_llm(
                 f"{cls.REPORT_PROMPT}\n\n以下是本次分析的情报数据：\n{intel_summary}",
-                max_tokens=2048, temperature=0.3,
+                max_tokens=2048, temperature=0.3, engine=engine,
             )
             logger.info(f"[AI] 侦查报告生成完成 [{provider}]")
             return report_text, provider

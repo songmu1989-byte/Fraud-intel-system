@@ -139,6 +139,7 @@ class AnalysisRequest(BaseModel):
     priority:       str = "normal"    # normal / urgent
     analyst_id:     Optional[str] = None
     extra_keywords: List[str] = []    # 案情补充关键词
+    ai_engine:      str = "auto"      # auto / gemini / deepseek
 
 
 class AnalysisResponse(BaseModel):

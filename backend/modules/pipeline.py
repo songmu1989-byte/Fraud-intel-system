@@ -42,6 +42,8 @@ class AnalysisPipeline:
         try:
             # 运行时读取 API Key（避免模块缓存导致空值）
             gemini_api_key = os.getenv("GEMINI_API_KEY", "")
+            deepseek_api_key = os.getenv("DEEPSEEK_API_KEY", "")
+            ai_engine = request.ai_engine  # auto / gemini / deepseek
 
             # 阶段一：OSINT 采集
             logger.info("[PIPELINE] 阶段1/5: OSINT 情报采集")
@@ -49,18 +51,22 @@ class AnalysisPipeline:
 
             # 阶段二：AI 内容 + 视觉分析（结果融入特征工程）
             content_result, vision_result = {}, {}
-            deepseek_api_key = os.getenv("DEEPSEEK_API_KEY", "")
-            if gemini_api_key or deepseek_api_key:
-                logger.info("[PIPELINE] 阶段2/5: AI 内容与视觉分析")
+            engine_available = (
+                (ai_engine in ("auto", "gemini") and gemini_api_key) or
+                (ai_engine in ("auto", "deepseek") and deepseek_api_key)
+            )
+            if engine_available:
+                logger.info(f"[PIPELINE] 阶段2/5: AI 内容与视觉分析 (engine={ai_engine})")
                 try:
                     content_result = GeminiContentAnalyzer.analyze(
-                        raw_intel.page_text or "", raw_intel.page_title or ""
+                        raw_intel.page_text or "", raw_intel.page_title or "",
+                        engine=ai_engine,
                     )
                     vision_result = GeminiVisionAnalyzer.analyze(
-                        raw_intel.screenshot_b64 or ""
+                        raw_intel.screenshot_b64 or "", engine=ai_engine,
                     )
                 except Exception as e:
-                    logger.warning(f"[PIPELINE] Gemini 分析失败（降级为纯规则）: {e}")
+                    logger.warning(f"[PIPELINE] AI 分析失败（降级为纯规则）: {e}")
 
             # 阶段三：特征工程（融合 AI 结果）
             logger.info("[PIPELINE] 阶段3/5: 特征提取与信号增强")
@@ -90,7 +96,7 @@ class AnalysisPipeline:
 
             gemini_result = None
             ai_start = time.time()
-            if gemini_api_key or deepseek_api_key:
+            if engine_available:
                 try:
                     report_context = {
                         "url": request.url,
@@ -117,7 +123,7 @@ class AnalysisPipeline:
                         "score_breakdown": wras_result.score_breakdown,
                         "feature_contrib": wras_result.feature_contrib,
                     }
-                    ai_report_text, report_provider = GeminiReportGenerator.generate(report_context)
+                    ai_report_text, report_provider = GeminiReportGenerator.generate(report_context, engine=ai_engine)
 
                     # 确定实际使用的 AI 提供商
                     content_provider = content_result.get("_provider", "")

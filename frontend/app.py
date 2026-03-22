@@ -61,6 +61,30 @@ with st.sidebar:
     extra_kw_input = st.text_area("补充风险关键词（每行一个）", placeholder="如：\n安全账户\n资金核验", height=100)
     extra_keywords = [k.strip() for k in extra_kw_input.splitlines() if k.strip()]
     st.markdown("---")
+    # ── AI 引擎选择 ──
+    st.markdown("### 🤖 AI 引擎选择")
+    _gk = os.getenv("GEMINI_API_KEY", "")
+    _dk = os.getenv("DEEPSEEK_API_KEY", "")
+    _engine_options = {"自动（Gemini 优先）": "auto", "仅 Gemini": "gemini", "仅 DeepSeek": "deepseek"}
+    _engine_label = st.radio("选择 AI 分析引擎", list(_engine_options.keys()), index=0, help="自动模式下 Gemini 为主引擎，失败时切换 DeepSeek")
+    ai_engine = _engine_options[_engine_label]
+    # 状态提示
+    if ai_engine == "gemini" and not _gk:
+        st.error("Gemini API Key 未配置")
+    elif ai_engine == "deepseek" and not _dk:
+        st.error("DeepSeek API Key 未配置")
+    elif ai_engine == "auto" and not _gk and not _dk:
+        st.warning("✦ AI 未连接 — 请配置至少一个 API Key")
+    else:
+        _status_map = {
+            "auto": f"✦ 双引擎就绪 (Gemini{'✓' if _gk else '✗'} / DeepSeek{'✓' if _dk else '✗'})",
+            "gemini": "✦ Gemini AI 已连接",
+            "deepseek": "✦ DeepSeek AI 已连接",
+        }
+        st.success(_status_map[ai_engine])
+    if ai_engine == "deepseek":
+        st.caption("注意：DeepSeek 不支持视觉分析，截图分析将跳过")
+    st.markdown("---")
     st.markdown("### 📋 风险等级说明")
     st.markdown("🔴 **RED ≥ 80** — 高危，立即处置\n\n🟠 **ORANGE 60~79** — 中高风险，重点监控\n\n🟡 **YELLOW 40~59** — 疑似风险，继续侦查\n\n🟢 **GREEN < 40** — 暂无风险，存档备查")
     st.markdown("---")
@@ -69,17 +93,6 @@ with st.sidebar:
     for label, demo_url in demo_urls.items():
         if st.button(label, use_container_width=True):
             st.session_state["target_url"] = demo_url
-    st.markdown("---")
-    _gk = os.getenv("GEMINI_API_KEY", "")
-    _dk = os.getenv("DEEPSEEK_API_KEY", "")
-    if _gk and _dk:
-        st.success(f"✦ Gemini + DeepSeek 双引擎就绪")
-    elif _gk:
-        st.success(f"✦ Gemini AI 已连接")
-    elif _dk:
-        st.success(f"✦ DeepSeek AI 已连接")
-    else:
-        st.warning("✦ AI 未连接")
 
 col_input, col_btn = st.columns([4, 1])
 with col_input:
@@ -102,7 +115,7 @@ if analyze_btn and url_input.strip():
         try:
             from backend.modules.pipeline import AnalysisPipeline
             from backend.models.schemas import AnalysisRequest
-            request = AnalysisRequest(url=url_input.strip(), priority=priority, analyst_id=analyst_id or None, extra_keywords=extra_keywords)
+            request = AnalysisRequest(url=url_input.strip(), priority=priority, analyst_id=analyst_id or None, extra_keywords=extra_keywords, ai_engine=ai_engine)
             pipeline = AnalysisPipeline()
             loop = asyncio.new_event_loop()
             result = loop.run_until_complete(pipeline.run(request))
@@ -205,12 +218,13 @@ if analyze_btn and url_input.strip():
 
     with tab4:
         if gemini:
-            # ── Gemini 来源标识 ──
+            # ── AI 来源标识 ──
+            _provider_label = gemini.model_name or "AI Engine"
+            _provider_color = "#81c784"
             st.markdown(f"""<div style="background:#0a1628;border:1px solid #1b5e20;border-radius:6px;padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
               <div style="display:flex;align-items:center;gap:8px">
                 <span style="font-size:18px">✦</span>
-                <span style="color:#81c784;font-weight:600;font-size:13px">Powered by Google Gemini</span>
-                <span style="color:#546e7a;font-size:12px;font-family:'Share Tech Mono',monospace;background:#0d2818;padding:2px 8px;border-radius:3px">{gemini.model_name}</span>
+                <span style="color:{_provider_color};font-weight:600;font-size:13px">Powered by {_provider_label}</span>
               </div>
               <span style="color:#546e7a;font-size:11px;font-family:'Share Tech Mono',monospace">AI 分析耗时 {gemini.ai_elapsed_s:.1f}s</span>
             </div>""", unsafe_allow_html=True)
@@ -258,7 +272,7 @@ if analyze_btn and url_input.strip():
                 st.markdown("---\n### 📝 AI 侦查报告")
                 st.markdown(gemini.ai_report)
         else:
-            st.info("⚠️ Gemini AI 未配置或分析未执行。请在 .env 中配置 GEMINI_API_KEY 以启用 AI 智能分析。")
+            st.info("⚠️ AI 引擎未配置或分析未执行。请在 .env 中配置 GEMINI_API_KEY 或 DEEPSEEK_API_KEY 以启用 AI 智能分析。")
 
     with tab5:
         report_dict = {"report_id":report.report_id,"analyzed_at":report.analyzed_at.isoformat(),"url":report.url,"wras_score":wras.final_score,"risk_level":wras.risk_level.value,"disposal_action":report.disposal.action,"feature_vector":{k:v for k,v in feat.model_dump().items() if isinstance(v,(int,float))},"feature_contributions":wras.feature_contrib,"score_breakdown":wras.score_breakdown}
