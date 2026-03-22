@@ -63,17 +63,29 @@ FastAPI 后端 + Streamlit 前端
 
 ## 快速启动
 
+**环境要求：Python 3.11**
+
 ```bash
 # 安装依赖
 pip install -r requirements.txt
-playwright install chromium
-
-# 启动后端 API
-uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 
 # 启动前端界面
 streamlit run frontend/app.py
 ```
+
+> 如需完整页面抓取能力（Playwright），可额外安装：
+> ```bash
+> pip install playwright==1.44.0
+> playwright install chromium
+> ```
+> 未安装时自动降级为 httpx 采集，功能正常。
+
+**云端部署（Streamlit Cloud）**
+
+1. Fork 本仓库
+2. 前往 [share.streamlit.io](https://share.streamlit.io) 用 GitHub 账号登录
+3. 选择仓库，Main file path 填 `frontend/app.py`
+4. 点击 Deploy
 
 ---
 
