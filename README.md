@@ -61,9 +61,15 @@ FastAPI 后端 + Streamlit 前端
 
 ---
 
+## 在线演示
+
+[fraud-intel-system.streamlit.app](https://fraud-intel-system-yr3ybygwnofbwdlz6kuwwn.streamlit.app/)
+
+---
+
 ## 快速启动
 
-**环境要求：Python 3.11**
+**环境要求：Python 3.11+**
 
 ```bash
 # 安装依赖
@@ -75,7 +81,7 @@ streamlit run frontend/app.py
 
 > 如需完整页面抓取能力（Playwright），可额外安装：
 > ```bash
-> pip install playwright==1.44.0
+> pip install playwright
 > playwright install chromium
 > ```
 > 未安装时自动降级为 httpx 采集，功能正常。
