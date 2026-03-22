@@ -65,9 +65,11 @@ class GeminiContentAnalyzer:
 
     @classmethod
     def analyze(cls, page_text: str, page_title: str = "") -> Dict:
-        default = {"risk_score": 0.0, "fraud_types": [], "key_evidence": [], "reasoning": "AI 分析未执行"}
+        if not page_text:
+            return {"risk_score": 0.0, "fraud_types": [], "key_evidence": [], "reasoning": "未采集到页面文本，跳过内容分析"}
+        if not GEMINI_AVAILABLE or not _get_api_key():
+            return {"risk_score": 0.0, "fraud_types": [], "key_evidence": [], "reasoning": "Gemini AI 未配置"}
 
-        if not page_text or not GEMINI_AVAILABLE or not _get_api_key():
             return default
 
         text_input = page_text[:8000]

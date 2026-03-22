@@ -212,13 +212,16 @@ if analyze_btn and url_input.strip():
             # ── AI 内容语义分析 ──
             st.markdown("### 🧠 AI 内容语义分析")
             ai_score = gemini.content_risk_score
-            ai_color = "#f44336" if ai_score>0.7 else ("#ff9800" if ai_score>0.4 else ("#ffeb3b" if ai_score>0.2 else "#4caf50"))
-            st.markdown(f"""<div style="background:#0d1b2a;border:1px solid #1e3a5f;border-radius:8px;padding:16px;margin:8px 0">
-              <div style="display:flex;align-items:center;gap:16px">
-                <div style="font-size:36px;font-weight:700;color:{ai_color};font-family:'Share Tech Mono',monospace">{ai_score:.0%}</div>
-                <div><div style="font-size:13px;color:#546e7a">AI 欺诈风险评分</div>
-                <div style="color:#b0bec5;font-size:13px;margin-top:4px">{gemini.content_reasoning}</div></div>
-              </div></div>""", unsafe_allow_html=True)
+            if ai_score > 0 or (gemini.content_reasoning and "未采集" not in gemini.content_reasoning):
+                ai_color = "#f44336" if ai_score>0.7 else ("#ff9800" if ai_score>0.4 else ("#ffeb3b" if ai_score>0.2 else "#4caf50"))
+                st.markdown(f"""<div style="background:#0d1b2a;border:1px solid #1e3a5f;border-radius:8px;padding:16px;margin:8px 0">
+                  <div style="display:flex;align-items:center;gap:16px">
+                    <div style="font-size:36px;font-weight:700;color:{ai_color};font-family:'Share Tech Mono',monospace">{ai_score:.0%}</div>
+                    <div><div style="font-size:13px;color:#546e7a">AI 欺诈风险评分</div>
+                    <div style="color:#b0bec5;font-size:13px;margin-top:4px">{gemini.content_reasoning}</div></div>
+                  </div></div>""", unsafe_allow_html=True)
+            else:
+                st.info(f"ℹ️ {gemini.content_reasoning}")
 
             if gemini.fraud_types:
                 st.markdown("**检测到的欺诈类型：**")
