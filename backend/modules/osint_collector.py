@@ -209,7 +209,7 @@ class PageContentCollector:
                 html = resp.text
                 result["page_html"] = html[:50000]
                 result["redirect_chain"] = [str(r.url) for r in resp.history[:5]]
-                soup = BeautifulSoup(html, "lxml")
+                soup = BeautifulSoup(html, "html.parser")
                 result["page_title"] = soup.title.string if soup.title else ""
                 result["page_text"] = soup.get_text(separator=" ", strip=True)[:10000]
         except Exception as e:
