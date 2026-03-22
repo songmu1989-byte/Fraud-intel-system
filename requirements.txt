@@ -7,3 +7,4 @@ beautifulsoup4
 loguru
 Pillow
 imagehash
+google-genai

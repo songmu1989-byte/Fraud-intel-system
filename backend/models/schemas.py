@@ -99,6 +99,26 @@ class DisposalPlan(BaseModel):
     steps:   List[str]
 
 
+class GeminiAnalysis(BaseModel):
+    """Gemini AI 分析结果"""
+    # 元信息（用于验证来源）
+    model_name:          str = ""
+    ai_elapsed_s:        float = 0.0
+    # 内容语义分析
+    content_risk_score:  float = 0.0
+    fraud_types:         List[str] = []
+    key_evidence:        List[str] = []
+    content_reasoning:   str = ""
+    # 视觉分析
+    visual_risk_score:   float = 0.0
+    is_phishing:         bool = False
+    impersonates:        Optional[str] = None
+    visual_features:     List[str] = []
+    visual_description:  str = ""
+    # AI 侦查报告
+    ai_report:           str = ""
+
+
 class IntelReport(BaseModel):
     """完整情报研判报告"""
     report_id:       str
@@ -108,6 +128,7 @@ class IntelReport(BaseModel):
     features:        FeatureVector
     wras:            WRASResult
     disposal:        DisposalPlan
+    gemini:          Optional[GeminiAnalysis] = None
     analyst_notes:   str = ""
     evidence_urls:   List[str] = []
 
