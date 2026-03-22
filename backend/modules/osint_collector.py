@@ -27,8 +27,15 @@ from backend.models.schemas import RawIntelligence
 from config.settings import BLACKLIST_DOMAINS
 
 
+def _normalize_url(url: str) -> str:
+    """确保 URL 有协议前缀"""
+    if "://" not in url:
+        url = f"https://{url}"
+    return url
+
+
 def _extract_domain(url: str) -> str:
-    parsed = urlparse(url if "://" in url else f"https://{url}")
+    parsed = urlparse(_normalize_url(url))
     return parsed.netloc.lower().replace("www.", "")
 
 
@@ -265,6 +272,7 @@ class OSINTCollector:
 
     @classmethod
     async def collect(cls, url: str) -> RawIntelligence:
+        url = _normalize_url(url)
         domain = _extract_domain(url)
         logger.info(f"[OSINT] 开始采集: {url} | domain={domain}")
 
