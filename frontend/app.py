@@ -1,6 +1,7 @@
+# frontend/app.py
 """
 涉诈智能研判系统 v2.0 — Streamlit 前端
-修复说明：修正了 Tab 4 中警告信息列表的引号嵌套语法错误。
+修复版：保留全部 700 行功能逻辑，仅修正语法错误、侧边栏显示异常及按钮响应问题。
 """
 import streamlit as st
 import asyncio
@@ -9,8 +10,8 @@ import os
 import json
 from datetime import datetime
 
-# 确保能找到 backend 模块
-sys.path.insert(0, os.getcwd())
+# 修复路径问题
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Streamlit Cloud Secrets → 环境变量
 for _key in ["GEMINI_API_KEY", "DEEPSEEK_API_KEY"]:
@@ -112,10 +113,11 @@ with st.sidebar:
         st.success(f"✦ {'Gemini✓' if _gk else ''} {'DeepSeek✓' if _dk else ''}")
 
     st.markdown("---\n### 📋 风险等级")
+    # 修复点 1：将 ~ 替换为 - 避免 Markdown 删除线冲突
     st.markdown("""
 🔴 **极高 / RED** ≥75 — 立即处置  
-🟠 **高 / ORANGE** 55~74 — 重点监控  
-🟡 **中 / YELLOW** 35~54 — 继续侦查  
+🟠 **高 / ORANGE** 55 - 74 — 重点监控  
+🟡 **中 / YELLOW** 35 - 54 — 继续侦查  
 🟢 **低 / GREEN** <35 — 存档备查
     """)
 
@@ -127,8 +129,10 @@ with st.sidebar:
     }
     for label, demo_text in demo_cases.items():
         if st.button(label, use_container_width=True):
+            # 修复点 2：增加页面刷新逻辑，确保点击后输入框立刻显示内容
             st.session_state["recruit_input"] = demo_text
             st.session_state["recruit_type"] = "recruitment_text"
+            st.rerun()
 
 
 # ─── 主 Tab 导航 ─────────────────────────────────────────────
@@ -566,7 +570,7 @@ with tab_db:
     # 搜索栏
     col_q, col_filter1, col_filter2 = st.columns([3, 1, 1])
     with col_q:
-        db_query = st.text_input("", placeholder="搜索公司名、诈骗类型或关键词…", label_visibility="collapsed")
+        db_query = st.text_input("搜索", placeholder="搜索公司名、诈骗类型或关键词…", label_visibility="collapsed")
     with col_filter1:
         db_fraud_type = st.selectbox("诈骗类型", ["全部", "付费培训诈骗", "虚假内推诈骗", "刷单返佣诈骗", "押金保证金诈骗", "虚假高薪诈骗"])
     with col_filter2:
@@ -707,7 +711,7 @@ with tab_aware:
 
     with col_warn:
         st.markdown("### ⚠️ 实时预警信息")
-        # ！！！此处之前存在语法错误，现已修复引号使用方式！！！
+        # ！！！此处修正了引号嵌套语法错误和波浪号导致的显示问题！！！
         warnings = [
             ("⚠️", "高薪陷阱高发期", "三月应届生求职季，'月薪2万无经验'类帖子增加340%，请高度警惕。", "#ffeb3b"),
             ("🔍", "内推骗局新变种", "近期出现冒充大厂HR使用企业微信行骗，注意核验对方工牌和邮箱域名。", "#ff9800"),
