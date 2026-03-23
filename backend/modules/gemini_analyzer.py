@@ -281,3 +281,66 @@ class GeminiReportGenerator:
         except Exception as e:
             logger.error(f"[AI] 报告生成失败: {e}")
             return f"⚠️ AI 报告生成失败：{e}", ""
+
+# ── 招聘诈骗专项AI分析 ───────────────────────────────────────
+
+class RecruitmentFraudAnalyzer:
+    """
+    招聘诈骗 AI 语义分析（双引擎）
+    专门针对招聘信息/聊天记录进行深度语义分析
+    """
+
+    SYSTEM_PROMPT = """你是一名专业的招聘诈骗情报分析师，专门识别针对大学生和求职者的就业诈骗。
+
+请对用户提交的内容进行分析，严格按以下JSON格式输出，不要输出任何其他内容：
+{
+  "risk_score": 0.0到1.0的浮点数,
+  "fraud_types": ["检测到的诈骗类型，如：付费培训诈骗、虚假内推诈骗、刷单返佣诈骗、押金保证金诈骗、虚假高薪诈骗"],
+  "fraud_type_confidence": "高|中|低",
+  "key_evidence": ["从文本中提取的关键证据，最多5条，直接引用原文"],
+  "reasoning": "一句话判断理由",
+  "detected_tactics": [{"tactic": "话术名称", "quote": "原文引用", "severity": "高|中|低"}]
+}
+
+诈骗类型识别标准：
+- 付费培训诈骗：要求缴纳培训费/报名费才能入职
+- 虚假内推诈骗：声称有内部名额，要求缴费
+- 刷单返佣诈骗：以兼职刷单为名要求垫资
+- 押金保证金诈骗：以任何名义收取押金
+- 虚假高薪诈骗：以不切实际的高薪为诱饵
+
+风险评分标准：
+- 0.0~0.2: 正常招聘信息
+- 0.2~0.5: 存在可疑话术，需进一步核实
+- 0.5~0.8: 高度可疑，多项诈骗特征
+- 0.8~1.0: 几乎确定是招聘诈骗"""
+
+    @classmethod
+    def analyze(cls, content: str, input_type: str = "recruitment_text", engine: str = "auto") -> dict:
+        if not content:
+            return {"risk_score": 0.0, "fraud_types": [], "key_evidence": [],
+                    "reasoning": "内容为空", "detected_tactics": [], "_provider": ""}
+
+        type_labels = {
+            "recruitment_text": "招聘信息",
+            "chat_log": "聊天记录",
+            "company_name": "公司名称",
+            "url": "网站链接",
+        }
+        label = type_labels.get(input_type, "文本")
+        prompt = f"{cls.SYSTEM_PROMPT}\n\n请分析以下{label}：\n\n{content[:6000]}"
+
+        try:
+            # 假设你的文件中已经存在 _call_llm 和 _parse_json，以及 logger
+            raw, provider = _call_llm(prompt, max_tokens=1024, temperature=0.1, engine=engine)
+            result = _parse_json(raw)
+            result["risk_score"] = max(0.0, min(1.0, float(result.get("risk_score", 0.0))))
+            result["_provider"] = provider
+            logger.info(f"[AI-Recruit] 分析完成 [{provider}]: risk={result['risk_score']:.2f}")
+            return result
+        except Exception as e:
+            logger.error(f"[AI-Recruit] 分析失败: {e}")
+            return {"risk_score": 0.0, "fraud_types": [], "key_evidence": [],
+                    "reasoning": f"AI分析失败：{e}", "detected_tactics": [], "_provider": ""}
+
+
