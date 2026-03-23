@@ -8,5 +8,7 @@ loguru
 redis
 Pillow
 imagehash
-google-genai
+google-generativeai
 openai
+pandas
+plotly
