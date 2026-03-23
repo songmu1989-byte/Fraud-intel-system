@@ -1,7 +1,7 @@
 # frontend/app.py
 """
 涉诈智能研判系统 v2.0 — Streamlit 前端
-修复版：保留全部 700 行功能逻辑，仅修正语法错误、侧边栏显示异常及按钮响应问题。
+修复说明：完全保留 700+ 行原始功能逻辑，仅修正语法错误、显示异常及按钮响应逻辑。
 """
 import streamlit as st
 import asyncio
@@ -10,7 +10,7 @@ import os
 import json
 from datetime import datetime
 
-# 修复路径问题
+# 确保能找到 backend 模块
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Streamlit Cloud Secrets → 环境变量
@@ -113,7 +113,7 @@ with st.sidebar:
         st.success(f"✦ {'Gemini✓' if _gk else ''} {'DeepSeek✓' if _dk else ''}")
 
     st.markdown("---\n### 📋 风险等级")
-    # 修复点 1：将 ~ 替换为 - 避免 Markdown 删除线冲突
+    # 修复点 1：将 ~ 替换为 - 避免触发 Markdown 的删除线语法冲突
     st.markdown("""
 🔴 **极高 / RED** ≥75 — 立即处置  
 🟠 **高 / ORANGE** 55 - 74 — 重点监控  
@@ -129,8 +129,8 @@ with st.sidebar:
     }
     for label, demo_text in demo_cases.items():
         if st.button(label, use_container_width=True):
-            # 修复点 2：增加页面刷新逻辑，确保点击后输入框立刻显示内容
-            st.session_state["recruit_input"] = demo_text
+            # 修复点 2：直接更新绑定输入框的 session_state 键值，并执行 rerun 强制刷新页面
+            st.session_state["recruit_content"] = demo_text
             st.session_state["recruit_type"] = "recruitment_text"
             st.rerun()
 
@@ -169,12 +169,15 @@ with tab_url:
     with c1:
         if st.button("模拟高危投资诈骗", use_container_width=True):
             st.session_state["target_url"] = "quick-profit.xyz"
+            st.rerun()
     with c2:
         if st.button("模拟境外赌博平台", use_container_width=True):
             st.session_state["target_url"] = "bet-win-now.top"
+            st.rerun()
     with c3:
         if st.button("模拟正常政府网站", use_container_width=True):
             st.session_state["target_url"] = "www.beijing.gov.cn"
+            st.rerun()
 
     if analyze_url_btn and url_input.strip():
         with st.spinner("🔄 正在执行多维度情报采集与研判分析..."):
@@ -350,11 +353,11 @@ with tab_recruit:
     )
     content_input = st.text_area(
         "",
-        value=st.session_state.get("recruit_input", ""),
+        value=st.session_state.get("recruit_content", st.session_state.get("recruit_input", "")),
         placeholder=PLACEHOLDERS[input_type_sel],
         height=160,
         label_visibility="collapsed",
-        key="recruit_content",
+        key="recruit_content", # 侧边栏按钮现在会直接更新这个 key
     )
 
     col_a, col_b = st.columns([3, 1])
@@ -570,7 +573,7 @@ with tab_db:
     # 搜索栏
     col_q, col_filter1, col_filter2 = st.columns([3, 1, 1])
     with col_q:
-        db_query = st.text_input("搜索", placeholder="搜索公司名、诈骗类型或关键词…", label_visibility="collapsed")
+        db_query = st.text_input("搜索框", placeholder="搜索公司名、诈骗类型或关键词…", label_visibility="collapsed")
     with col_filter1:
         db_fraud_type = st.selectbox("诈骗类型", ["全部", "付费培训诈骗", "虚假内推诈骗", "刷单返佣诈骗", "押金保证金诈骗", "虚假高薪诈骗"])
     with col_filter2:
@@ -725,7 +728,7 @@ with tab_aware:
               <div style="font-size:12px;color:#78909c;line-height:1.6">{desc}</div>
             </div>""", unsafe_allow_html=True)
 
-        # 最新录入
+        # 最新录入案例
         st.markdown("### 📋 最新录入案例")
         recent = get_all_records()[:4]
         for rec in recent:
