@@ -168,3 +168,81 @@ class AnalysisResponse(BaseModel):
     report:    Optional[IntelReport] = None
     error:     Optional[str]         = None
     elapsed_s: float                 = 0.0
+    
+# ─── 招聘诈骗专项数据模型 ─────────────────────────────────────
+from enum import Enum
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel
+
+class InputTypeEnum(str, Enum):
+    URL           = "url"
+    RECRUITMENT   = "recruitment_text"
+    CHAT_LOG      = "chat_log"
+    COMPANY_NAME  = "company_name"
+
+class CompanyCheckResult(BaseModel):
+    """公司基础信息核验"""
+    company_name:       Optional[str]  = None
+    found:              bool           = False
+    established_years:  Optional[int]  = None
+    registered_capital: Optional[str]  = None
+    business_scope:     Optional[str]  = None
+    registration_status:Optional[str]  = None   # 正常/注销/吊销/未知
+    icp_record:         Optional[str]  = None
+    risk_signals:       List[str]      = []
+    verdict:            str            = "未知"  # 正常/可疑/高危
+
+class RhetoricAnalysisResult(BaseModel):
+    """招聘话术风险分析"""
+    detected_tactics:   List[Dict]             = []  # [{tactic, quote, severity}]
+    keyword_hits:       Dict[str, List[str]]   = {}
+    risk_score:         float                  = 0.0
+    verdict:            str                    = "正常"
+
+class SentimentCheckResult(BaseModel):
+    """舆情交叉判断"""
+    search_snippets:    List[str] = []
+    complaint_count:    int       = 0
+    negative_score:     float     = 0.0
+    verdict:            str       = "正常"
+
+class RecruitmentFraudAnalysis(BaseModel):
+    """招聘诈骗综合研判报告"""
+    input_type:             str
+    input_summary:          str            = ""
+    overall_risk:           str            = "低"       # 极高/高/中/低
+    risk_score:             int            = 0          # 0-100
+    fraud_type:             Optional[str]  = None
+    fraud_type_confidence:  str            = "低"
+    company_check:          Optional[CompanyCheckResult]     = None
+    rhetoric_analysis:      Optional[RhetoricAnalysisResult] = None
+    sentiment_check:        Optional[SentimentCheckResult]   = None
+    evidence_chain:         List[str]      = []
+    recommendations:        List[str]      = []
+    summary:                str            = ""
+    ai_detail:              Optional[Dict] = None
+
+class FraudRecord(BaseModel):
+    """涉诈信息库记录"""
+    id:             Optional[str]   = None
+    created_at:     Optional[str]   = None
+    company:        Optional[str]   = None
+    url:            Optional[str]   = None
+    input_type:     str             = "unknown"
+    fraud_type:     Optional[str]   = None
+    risk_level:     str             = "中"
+    risk_score:     int             = 0
+    evidence:       List[str]       = []
+    complaint_count:int             = 0
+    analyst_id:     Optional[str]   = None
+    report_id:      Optional[str]   = None
+    notes:          str             = ""
+
+class RecruitmentAnalysisRequest(BaseModel):
+    input_type:     str                   # url / recruitment_text / chat_log / company_name
+    content:        str                   # 用户输入内容
+    analyst_id:     Optional[str]  = None
+    extra_keywords: List[str]      = []
+    ai_engine:      str            = "auto"
+    save_to_db:     bool           = False
+
