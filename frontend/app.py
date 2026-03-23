@@ -1,8 +1,6 @@
-# frontend/app.py
 """
 涉诈智能研判系统 v2.0 — Streamlit 前端
-新增：招聘诈骗研判 / 涉诈信息库 / 反诈预警
-保留：原有涉诈网站 URL 分析功能
+修复说明：修正了 Tab 4 中警告信息列表的引号嵌套语法错误。
 """
 import streamlit as st
 import asyncio
@@ -11,12 +9,14 @@ import os
 import json
 from datetime import datetime
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# 确保能找到 backend 模块
+sys.path.insert(0, os.getcwd())
 
 # Streamlit Cloud Secrets → 环境变量
 for _key in ["GEMINI_API_KEY", "DEEPSEEK_API_KEY"]:
     try:
-        os.environ[_key] = st.secrets[_key]
+        if _key in st.secrets:
+            os.environ[_key] = st.secrets[_key]
     except Exception:
         pass
 
@@ -707,10 +707,11 @@ with tab_aware:
 
     with col_warn:
         st.markdown("### ⚠️ 实时预警信息")
+        # ！！！此处之前存在语法错误，现已修复引号使用方式！！！
         warnings = [
-            ("⚠️", "高薪陷阱高发期", "三月应届生求职季，"月薪2万无经验"类帖子增加340%，请高度警惕。", "#ffeb3b"),
+            ("⚠️", "高薪陷阱高发期", "三月应届生求职季，'月薪2万无经验'类帖子增加340%，请高度警惕。", "#ffeb3b"),
             ("🔍", "内推骗局新变种", "近期出现冒充大厂HR使用企业微信行骗，注意核验对方工牌和邮箱域名。", "#ff9800"),
-            ("💳", "零成本≠零风险", "部分诈骗初期不收费，以"试用期任务"诱导垫资，警惕所有垫资兼职。", "#f97316"),
+            ("💳", "零成本≠零风险", "部分诈骗初期不收费，以'试用期任务'诱导垫资，警惕所有垫资兼职。", "#f97316"),
             ("🎓", "校招季风险提示", "虚假校招信息已出现，通过官方就业平台和辅导员核实任何校招信息。", "#4fc3f7"),
             ("📱", "维权渠道提示", "遭遇招聘诈骗可拨打 12321 举报热线，或通过求职平台内举报功能。", "#4caf50"),
         ]
@@ -733,3 +734,4 @@ with tab_aware:
               <span style="color:#546e7a">{ft[:8]}</span>
               <span style="color:{color_r};font-weight:700">{risk}</span>
             </div>""", unsafe_allow_html=True)
+
